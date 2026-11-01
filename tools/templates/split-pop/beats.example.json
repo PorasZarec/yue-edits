@@ -1,0 +1,132 @@
+{
+  "duration": 6,
+  "videoSrc": "assets/cut.mp4",
+  "faceModes": {
+    "SPLIT_WIDE": {
+      "x": -29,
+      "y": 485,
+      "scale": 1.56,
+      "opacity": 1
+    },
+    "SPLIT_TIGHT": {
+      "x": -128,
+      "y": 330,
+      "scale": 1.83,
+      "opacity": 1
+    },
+    "FULLSCREEN_ZOOM": {
+      "x": -220,
+      "y": -320,
+      "scale": 1.82,
+      "opacity": 1
+    },
+    "FULLSCREEN_GRAPHICS": {
+      "x": -29,
+      "y": 485,
+      "scale": 1.56,
+      "opacity": 0
+    }
+  },
+  "layoutSchedule": [
+    {
+      "time": 0,
+      "mode": "SPLIT_WIDE",
+      "transitionDur": 0.24
+    },
+    {
+      "time": 3.4,
+      "mode": "FULLSCREEN_GRAPHICS",
+      "transitionDur": 0.22
+    },
+    {
+      "time": 4.8,
+      "mode": "FULLSCREEN_ZOOM",
+      "transitionDur": 0.24
+    }
+  ],
+  "cameraRig": {
+    "ambientPushes": [
+      {
+        "start": 0,
+        "end": 3.4,
+        "fromScale": 1,
+        "toScale": 1.07
+      }
+    ],
+    "trackFocuses": [
+      {
+        "time": 0.12,
+        "panX": 40,
+        "panY": 80,
+        "zoom": 1.18,
+        "holdDur": 0.35,
+        "inDur": 0.22
+      },
+      {
+        "time": 1.25,
+        "panX": -30,
+        "panY": -80,
+        "zoom": 1.22,
+        "holdDur": 0.45,
+        "inDur": 0.22
+      }
+    ]
+  },
+  "captionChunks": [
+    {
+      "words": [
+        {
+          "text": "I'VE",
+          "start": 0.1,
+          "end": 0.4,
+          "highlight": null
+        },
+        {
+          "text": "NOW",
+          "start": 0.4,
+          "end": 0.7,
+          "highlight": null
+        },
+        {
+          "text": "BEEN",
+          "start": 0.7,
+          "end": 1.2,
+          "highlight": "yellow"
+        }
+      ]
+    },
+    {
+      "words": [
+        {
+          "text": "RUNNING",
+          "start": 1.4,
+          "end": 1.9,
+          "highlight": null
+        },
+        {
+          "text": "SOLO",
+          "start": 1.9,
+          "end": 3.1,
+          "highlight": "green"
+        }
+      ]
+    },
+    {
+      "words": [
+        {
+          "text": "TIMES",
+          "start": 3.45,
+          "end": 3.9,
+          "highlight": null
+        },
+        {
+          "text": "10",
+          "start": 3.9,
+          "end": 4.6,
+          "highlight": "red"
+        }
+      ]
+    }
+  ],
+  "sfx": []
+}

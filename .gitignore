@@ -1,0 +1,39 @@
+# Installed by setup.mjs on each computer
+kit/
+node_modules/
+.venv/
+venv/
+
+# Your footage, renders, style, rules, and keys stay local
+.env
+.env.*
+inbox/*
+outbox/*
+my-sounds/*
+!inbox/.gitkeep
+!outbox/.gitkeep
+!my-sounds/.gitkeep
+my-style.md
+my-rules.md
+
+# Raw & rendered media / temp audio / tracking outputs anywhere in repo
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.avi
+*.wav
+*.mp3
+*.transcribe.mp3
+*.head-track.json
+*.face-track.json
+
+# Sync, OS, and Python caches
+*.sync-conflict-*
+~syncthing~*
+.stfolder/
+.stversions/
+.DS_Store
+Thumbs.db
+__pycache__/
+*.py[cod]

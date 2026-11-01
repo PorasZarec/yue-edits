@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Split-Pop Video Composition (v2 — Katana MGRT + Camera Rig)</title>
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      :root {
+        --bg-stage: #0b0d12;
+        --bg-card: #12151e;
+        --text-white: #ffffff;
+        --hl-yellow: #ffd60a;
+        --hl-green: #22c55e;
+        --hl-red: #ef4444;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--bg-stage);
+        font-family: "Montserrat", sans-serif;
+        color: var(--text-white);
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--bg-stage);
+      }
+      /* 1. Speaker Layer (Bottom 42%: y 1120..1920 in Split Mode, or edge-to-edge Fullscreen)
+            NEVER put a black cover box (#fs-bed) beneath the speaker's face — zoom to fill! */
+      #face-wrapper {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1080px;
+        height: 1920px;
+        transform-origin: 0 0;
+        z-index: 1;
+        overflow: hidden;
+      }
+      #face-video {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: contrast(1.05) saturate(1.06);
+      }
+      /* 2. Top Motion-Graphics Stage (Top 58%: y 0..1120) with Dual-Layer Camera Rig */
+      #top-stage {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1080px;
+        height: 1120px;
+        background: radial-gradient(circle at 50% 42%, #161b28 0%, #0b0d12 72%);
+        overflow: hidden;
+        z-index: 4;
+      }
+      #top-stage::before, #fs-mg-stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 48px 48px;
+        pointer-events: none;
+      }
+      /* Dual-Layer Virtual Camera Rig:
+         - #mg-ambient-zoom: continuous subtle zoom-in (1.0 -> 1.07x) all the time
+         - #mg-camera: sharp expo.out zoom-in & pan tracking each popping element */
+      #mg-ambient-zoom, #mg-camera {
+        position: absolute;
+        inset: 0;
+        width: 1080px;
+        height: 1120px;
+        transform-origin: 540px 560px;
+        will-change: transform;
+      }
+      /* 3. Full-Screen MGRT / Higgsfield Katana Takeover Stage (~10% of video, 1080x1920) */
+      #fs-mg-stage {
+        position: absolute;
+        inset: 0;
+        width: 1080px;
+        height: 1920px;
+        background: radial-gradient(circle at 50% 45%, #1a2035 0%, #07090e 75%);
+        overflow: hidden;
+        z-index: 12;
+        opacity: 0;
+        visibility: hidden;
+      }
+      #fs-mg-camera {
+        position: absolute;
+        inset: 0;
+        width: 1080px;
+        height: 1920px;
+        transform-origin: 540px 960px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 80px 120px;
+        gap: 36px;
+        will-change: transform;
+      }
+      .katana-hyper-text {
+        font-weight: 900;
+        font-size: 120px;
+        max-width: 840px;
+        line-height: 0.94;
+        letter-spacing: 0em;
+        text-transform: uppercase;
+        text-align: center;
+        background: linear-gradient(180deg, #ffffff 0%, #ffd60a 100%);
+        -webkit-background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 12px 36px rgba(255, 214, 10, 0.35));
+      }
+      .beat-scene {
+        position: absolute;
+        inset: 0;
+        width: 1080px;
+        height: 1120px;
+        padding: 72px 72px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        visibility: hidden;
+      }
+      .mg-card {
+        width: 100%;
+        background: rgba(18, 21, 30, 0.95);
+        border: 1.5px solid rgba(255, 255, 255, 0.14);
+        border-radius: 28px;
+        padding: 36px 40px;
+        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.65), 0 0 50px rgba(255, 214, 10, 0.08);
+        position: relative;
+      }
+      .mg-prompt-box {
+        width: 100%;
+        background: #141720;
+        border: 1.5px solid rgba(239, 68, 68, 0.4);
+        border-radius: 26px;
+        padding: 34px 38px;
+        box-shadow: 0 0 65px rgba(239, 68, 68, 0.24), 0 24px 60px rgba(0, 0, 0, 0.7);
+        position: relative;
+      }
+      .clipart-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 112px;
+        height: 112px;
+        border-radius: 26px;
+        background: rgba(255, 255, 255, 0.07);
+        border: 2px solid rgba(255, 255, 255, 0.16);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+        padding: 18px;
+      }
+      .clipart-badge img { width: 100%; height: 100%; object-fit: contain; }
+      /* 4. Seam Bridge (y 1060..1180, exact boundary at y=1120) */
+      #seam-bridge {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 1060px;
+        height: 120px;
+        background: linear-gradient(to bottom, rgba(11,13,18,0) 0%, rgba(11,13,18,0.92) 50%, rgba(11,13,18,0) 100%);
+        z-index: 6;
+        pointer-events: none;
+      }
+      #seam-line {
+        position: absolute;
+        left: 80px;
+        right: 80px;
+        top: 1119px;
+        height: 2px;
+        background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.22) 50%, transparent 100%);
+        z-index: 7;
+        pointer-events: none;
+      }
+      /* 5. Single-Line Seam Captions
+            - Placed at exact boundary y=1120px (height:0 + align-items:center centers text dead-on 1120px)
+            - Clean drop shadow ONLY — NO outer strokes (-webkit-text-stroke forbidden)! */
+      #captions-stage {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 1120px;
+        height: 0;
+        z-index: 20;
+        pointer-events: none;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .cap-chunk {
+        position: absolute;
+        left: 40px;
+        right: 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 26px;
+        text-align: center;
+        opacity: 0;
+        visibility: hidden;
+        will-change: transform, opacity, filter;
+      }
+      .cap-word {
+        display: inline-block;
+        font-family: "Montserrat", sans-serif;
+        font-weight: 900;
+        font-size: 62px;
+        line-height: 1.08;
+        letter-spacing: 0em;
+        text-transform: uppercase;
+        color: var(--text-white);
+        white-space: nowrap;
+        text-shadow: 0 4px 12px rgba(0,0,0,0.88), 0 12px 32px rgba(0,0,0,0.68);
+        transform-origin: center center;
+        will-change: transform, filter, color;
+      }
+      .cap-word.hl-yellow {
+        color: var(--hl-yellow);
+        text-shadow: 0 0 24px rgba(255,214,10,0.5), 0 4px 12px rgba(0,0,0,0.88), 0 12px 32px rgba(0,0,0,0.72);
+      }
+      .cap-word.hl-green {
+        color: var(--hl-green);
+        text-shadow: 0 0 24px rgba(34,197,94,0.5), 0 4px 12px rgba(0,0,0,0.88), 0 12px 32px rgba(0,0,0,0.72);
+      }
+      .cap-word.hl-red {
+        color: var(--hl-red);
+        text-shadow: 0 0 24px rgba(239,68,68,0.5), 0 4px 12px rgba(0,0,0,0.88), 0 12px 32px rgba(0,0,0,0.72);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="6.0" data-width="1080" data-height="1920">
+      <div id="face-wrapper">
+        <video id="face-video" data-start="0" data-duration="6.0" data-track-index="0" src="assets/cut.mp4" muted playsinline></video>
+      </div>
+      <audio id="face-audio" data-start="0" data-duration="6.0" data-track-index="1" data-volume="1" src="assets/cut.mp4"></audio>
+
+      <div id="top-stage">
+        <div id="mg-ambient-zoom">
+          <div id="mg-camera">
+            <div class="beat-scene" id="beat-0">
+              <div class="mg-card" id="b0-card" style="margin-bottom: 28px">
+                <div style="display: flex; align-items: center; gap: 22px">
+                  <div class="clipart-badge" id="b0-icon-1"><img src="assets/icons/terminal.svg" alt="" /></div>
+                  <div>
+                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 24px; color: #94a3b8">TIMELINE INSPECTOR</div>
+                    <div style="font-size: 40px; font-weight: 900; color: #ffffff">100% COVERAGE READY</div>
+                  </div>
+                </div>
+              </div>
+              <div class="mg-prompt-box" id="b0-prompt">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px">
+                  <div style="display: flex; align-items: center; gap: 20px">
+                    <div class="clipart-badge" id="b0-icon-2" style="width: 84px; height: 84px"><img src="assets/icons/rocket.svg" alt="" /></div>
+                    <span style="font-size: 34px; font-weight: 700; color: #f8fafc">Edit this video with Split-Pop</span>
+                  </div>
+                  <div id="b0-send-btn" style="width: 68px; height: 68px; border-radius: 18px; background: #ef4444; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 900">↑</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full-Screen MGRT / Higgsfield Katana Takeover (~10% of video) -->
+      <div id="fs-mg-stage">
+        <div id="fs-mg-camera">
+          <div class="clipart-badge" id="fs-icon" style="width: 200px; height: 200px; border-radius: 44px"><img src="assets/icons/fire.svg" alt="" /></div>
+          <div class="katana-hyper-text" id="fs-hyper">10X LEVEL</div>
+          <div class="mg-card" id="fs-subcard" style="text-align: center; font-size: 40px; font-weight: 900">EVERY DECISION ON YOU</div>
+        </div>
+      </div>
+
+      <div id="seam-bridge"></div>
+      <div id="seam-line"></div>
+      <div id="captions-stage"></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const COMP_DURATION = 6.0;
+
+      // 3-Mode Layout Architecture from tools/track-head.mjs:
+      // 1. SPLIT_WIDE / SPLIT_TIGHT (~65-70%)
+      // 2. FULLSCREEN_ZOOM (~20-25% — zoomed so face fills 1080x1920 with zero black cover bars)
+      // 3. FULLSCREEN_GRAPHICS (~10% — Higgsfield Katana MGRT full-screen takeover)
+      const FACE_MODES = {
+        SPLIT_WIDE: { x: -29, y: 485, scale: 1.56, opacity: 1 },
+        SPLIT_TIGHT: { x: -128, y: 330, scale: 1.83, opacity: 1 },
+        FULLSCREEN_ZOOM: { x: -220, y: -320, scale: 1.82, opacity: 1 },
+        FULLSCREEN_GRAPHICS: { x: -29, y: 485, scale: 1.56, opacity: 0 },
+      };
+
+      tl.set("#face-wrapper", FACE_MODES.SPLIT_WIDE, 0);
+
+      function scheduleLayoutMode(time, modeName, transitionDur = 0.24) {
+        const isFsSpeaker = modeName === "FULLSCREEN_ZOOM";
+        const isFsGraphics = modeName === "FULLSCREEN_GRAPHICS";
+        tl.to("#face-wrapper", { ...FACE_MODES[modeName], duration: transitionDur, ease: "expo.inOut" }, time);
+        tl.to(["#top-stage", "#seam-bridge", "#seam-line"], { opacity: isFsSpeaker || isFsGraphics ? 0 : 1, duration: transitionDur * 0.85, ease: "power2.inOut" }, time);
+        tl.set("#fs-mg-stage", { visibility: isFsGraphics ? "visible" : "hidden" }, isFsGraphics ? time : time + transitionDur);
+        tl.to("#fs-mg-stage", { opacity: isFsGraphics ? 1 : 0, duration: transitionDur * 0.85, ease: "power2.inOut" }, time);
+        // Subtitle placement (v4):
+        // - Permanently locked at y=1120px (y: 0) in BOTH Split Mode and Full-Screen Speaker Mode!
+        // - Full-Screen Katana Graphics Mode: hidden (opacity: 0) because spoken words are animated directly inside #fs-mg-stage
+        tl.to("#captions-stage", { y: 0, opacity: isFsGraphics ? 0 : 1, duration: transitionDur * 0.8, ease: "expo.inOut" }, time);
+      }
+
+      // Dual-Layer Graphics Camera Helpers:
+      // 1. Continuous subtle zoom-in on the whole graphic side all the time
+      function ambientPush(start, end, fromScale = 1.0, toScale = 1.07) {
+        tl.fromTo("#mg-ambient-zoom", { scale: fromScale }, { scale: toScale, duration: Math.max(0.2, end - start), ease: "none" }, start);
+      }
+      // 2. Sharp camera zoom-in & pan tracking popping inputs (clamped to readable safe box)
+      function trackFocus(time, panX, panY, zoom = 1.2, holdDur = 0.45, inDur = 0.22) {
+        const safeX = Math.max(-110, Math.min(110, panX));
+        const safeY = Math.max(-85, Math.min(85, panY));
+        tl.to("#mg-camera", { x: safeX, y: safeY, scale: zoom, duration: inDur, ease: "expo.out" }, time);
+        tl.to("#mg-camera", { x: 0, y: 0, scale: 1.0, duration: 0.34, ease: "power2.inOut" }, time + inDur + holdDur);
+      }
+
+      // __CAMERA_SCHEDULE_START__
+      ambientPush(0, 3.4, 1, 1.07);
+      trackFocus(0.12, 40, 80, 1.18, 0.35, 0.22);
+      trackFocus(1.25, -30, -80, 1.22, 0.45, 0.22);
+      scheduleLayoutMode(3.4, "FULLSCREEN_GRAPHICS", 0.22);
+      scheduleLayoutMode(4.8, "FULLSCREEN_ZOOM", 0.24);
+      // __CAMERA_SCHEDULE_END__
+
+      const CAPTION_CHUNKS = [
+        { words: [{ text: "I'VE", start: 0.1, end: 0.4, highlight: null }, { text: "NOW", start: 0.4, end: 0.7, highlight: null }, { text: "BEEN", start: 0.7, end: 1.2, highlight: "yellow" }] },
+        { words: [{ text: "RUNNING", start: 1.4, end: 1.9, highlight: null }, { text: "SOLO", start: 1.9, end: 3.1, highlight: "green" }] },
+        { words: [{ text: "TIMES", start: 3.45, end: 3.9, highlight: null }, { text: "10", start: 3.9, end: 4.6, highlight: "red" }] },
+      ];
+
+      const capStage = document.getElementById("captions-stage");
+      CAPTION_CHUNKS.forEach((chunk, cIdx) => {
+        const chunkEl = document.createElement("div");
+        chunkEl.className = "cap-chunk";
+        chunkEl.id = `cap-chunk-${cIdx}`;
+        chunk.words.forEach((w, wIdx) => {
+          const span = document.createElement("span");
+          span.className = "cap-word" + (w.highlight ? ` hl-${w.highlight}` : "");
+          span.id = `cap-w-${cIdx}-${wIdx}`;
+          span.textContent = w.text.toUpperCase();
+          chunkEl.appendChild(span);
+        });
+        capStage.appendChild(chunkEl);
+
+        const cStart = Math.max(0, chunk.words[0].start - 0.06);
+        const cEnd = chunk.words[chunk.words.length - 1].end + 0.08;
+        tl.set(chunkEl, { visibility: "visible" }, cStart);
+        tl.fromTo(chunkEl, { opacity: 0, y: 14, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.13, ease: "power3.out" }, cStart);
+
+        chunk.words.forEach((w, wIdx) => {
+          const wEl = `#cap-w-${cIdx}-${wIdx}`;
+          const hlColor = w.highlight === "yellow" ? "#ffd60a" : w.highlight === "green" ? "#22c55e" : w.highlight === "red" ? "#ef4444" : "#ffffff";
+          tl.fromTo(wEl, { scale: 0.92, filter: "brightness(1)" }, { scale: 1.2, color: hlColor, filter: w.highlight ? `brightness(1.35) drop-shadow(0 0 16px ${hlColor})` : "brightness(1.15)", duration: 0.09, ease: "back.out(3.2)" }, w.start);
+          tl.to(wEl, { scale: 1.0, filter: "brightness(1)", duration: 0.12, ease: "power2.out" }, w.end);
+        });
+
+        tl.to(chunkEl, { opacity: 0, y: -8, filter: "blur(6px)", duration: 0.1, ease: "power2.in" }, cEnd);
+        tl.set(chunkEl, { visibility: "hidden" }, cEnd + 0.11);
+      });
+
+      tl.set("#beat-0", { visibility: "visible", opacity: 1 }, 0);
+      tl.fromTo("#b0-card", { y: 36, opacity: 0, scale: 0.94, filter: "blur(8px)" }, { y: 0, opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.28, ease: "back.out(1.8)" }, 0.05);
+      tl.fromTo("#b0-icon-1", { scale: 0, rotation: -15 }, { scale: 1, rotation: 0, duration: 0.32, ease: "back.out(2.6)" }, 0.12);
+      tl.fromTo("#b0-prompt", { y: 40, opacity: 0, scale: 0.92 }, { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: "back.out(1.8)" }, 0.45);
+      tl.fromTo("#b0-icon-2", { scale: 0, rotation: 18 }, { scale: 1, rotation: 0, duration: 0.3, ease: "back.out(2.8)" }, 0.52);
+
+      // Full-screen Katana MGRT Takeover animation (3.4s - 4.8s)
+      tl.fromTo("#fs-mg-camera", { scale: 0.88, filter: "blur(12px)" }, { scale: 1.06, filter: "blur(0px)", duration: 1.35, ease: "power2.out" }, 3.4);
+      tl.fromTo("#fs-icon", { scale: 0, rotation: -20 }, { scale: 1, rotation: 0, duration: 0.3, ease: "back.out(3)" }, 3.45);
+      tl.fromTo("#fs-hyper", { scale: 1.8, opacity: 0, filter: "blur(14px)" }, { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.24, ease: "expo.out" }, 3.55);
+
+      tl.set({}, {}, COMP_DURATION);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
